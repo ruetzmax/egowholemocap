@@ -69,6 +69,11 @@ human_models
 
 ### 1. Download the pretrained models
 
+
+-------------------Note---------------------------------
+
+The following models are not available anymore. Please use this link: https://drive.google.com/drive/folders/13y9rxSLFKhbpq9JBrolxWn3ranl3sD-_?usp=sharing
+
 1. Download the pretrained human body pose estimation model (FisheyeViT + pixel-aligned 3D heatmap) from [NextCloud](https://nextcloud.mpi-klsb.mpg.de/index.php/s/zmaFFAEBR33LFQt) and put it under `./checkpoints/`.
 2. Download the pretrained hand detection model from [NextCloud](https://nextcloud.mpi-klsb.mpg.de/index.php/s/8zow6NEWKgPFnRF) and put it under `./checkpoints/`.
 3. Download the pretrained hand pose estimation model from [NextCloud](https://nextcloud.mpi-klsb.mpg.de/index.php/s/343YTMdfgAneHcC) and put it under `./checkpoints/`.
