@@ -21,7 +21,7 @@ class Model(nn.Module):
             self.backbone = networks['backbone']
             self.position_net = networks['position_net']
             self.rotation_net = networks['rotation_net']
-            self.smpl_layer = copy.deepcopy(self.human_models.smpl.layer['neutral']).cuda()
+            self.smpl_layer = copy.deepcopy(self.human_models.smpl.layer['neutral']).cpu()
             self.trainable_modules = [self.backbone, self.position_net, self.rotation_net]
 
         # hand networks
@@ -33,14 +33,14 @@ class Model(nn.Module):
             for param in self.rotation_net.parameters():
                 param.requires_grad = False
 
-            self.mano_layer = copy.deepcopy(self.human_models.mano.layer['right']).cuda()
+            self.mano_layer = copy.deepcopy(self.human_models.mano.layer['right']).cpu()
             self.trainable_modules = [self.backbone, self.position_net, self.rotation_net]
 
         # face networks
         elif cfg.parts == 'face':
             self.backbone = networks['backbone']
             self.regressor = networks['regressor']
-            self.flame_layer = copy.deepcopy(self.human_models.flame.layer).cuda()
+            self.flame_layer = copy.deepcopy(self.human_models.flame.layer).cpu()
             self.trainable_modules = [self.backbone, self.regressor]
 
         self.coord_loss = CoordLoss()
@@ -51,7 +51,7 @@ class Model(nn.Module):
         t_xy = cam_param[:, :2]
         gamma = torch.sigmoid(cam_param[:, 2])  # apply sigmoid to make it positive
         k_value = torch.FloatTensor([math.sqrt(cfg.focal[0] * cfg.focal[1] * cfg.camera_3d_size * cfg.camera_3d_size / (
-                cfg.input_img_shape[0] * cfg.input_img_shape[1]))]).cuda().view(-1)
+                cfg.input_img_shape[0] * cfg.input_img_shape[1]))]).cpu().view(-1)
         t_z = k_value * gamma
         cam_trans = torch.cat((t_xy, t_z[:, None]), 1)
         return cam_trans
@@ -70,7 +70,7 @@ class Model(nn.Module):
             # change 6d pose -> axis angles
             root_pose = rot6d_to_axis_angle(root_pose_6d)
             pose_param = rot6d_to_axis_angle(pose_param_6d.view(-1, 6)).reshape(batch_size, -1)
-            pose_param = torch.cat((pose_param, torch.zeros((batch_size, 2 * 3)).cuda().float()),
+            pose_param = torch.cat((pose_param, torch.zeros((batch_size, 2 * 3)).cpu().float()),
                                    1)  # add two zero hand poses
             cam_trans = self.get_camera_trans(cam_param)
             return root_pose, pose_param, shape_param, cam_trans
@@ -91,7 +91,7 @@ class Model(nn.Module):
                                      betas=params['shape'])
             # camera-centered 3D coordinate
             mesh_cam = output.vertices
-            joint_cam = torch.bmm(torch.from_numpy(self.human_models.smpl.joint_regressor).cuda()[None, :, :].repeat(batch_size, 1, 1),
+            joint_cam = torch.bmm(torch.from_numpy(self.human_models.smpl.joint_regressor).cpu()[None, :, :].repeat(batch_size, 1, 1),
                                   mesh_cam)
             root_joint_idx = self.human_models.smpl.root_joint_idx
         elif cfg.parts == 'hand':
@@ -99,11 +99,11 @@ class Model(nn.Module):
                                      betas=params['shape'])
             # camera-centered 3D coordinate
             mesh_cam = output.vertices
-            joint_cam = torch.bmm(torch.from_numpy(self.human_models.mano.joint_regressor).cuda()[None, :, :].repeat(batch_size, 1, 1),
+            joint_cam = torch.bmm(torch.from_numpy(self.human_models.mano.joint_regressor).cpu()[None, :, :].repeat(batch_size, 1, 1),
                                   mesh_cam)
             root_joint_idx = self.human_models.mano.root_joint_idx
         elif cfg.parts == 'face':
-            zero_pose = torch.zeros((1, 3)).float().cuda().repeat(batch_size, 1)  # zero pose for eyes and neck
+            zero_pose = torch.zeros((1, 3)).float().cpu().repeat(batch_size, 1)  # zero pose for eyes and neck
             output = self.flame_layer(global_orient=params['root_pose'], jaw_pose=params['jaw_pose'],
                                       betas=params['shape'], expression=params['expr'], neck_pose=zero_pose,
                                       leye_pose=zero_pose, reye_pose=zero_pose)

@@ -2,6 +2,7 @@
 
 import pickle
 from copy import deepcopy
+import time
 
 import numpy as np
 import open3d
@@ -38,18 +39,35 @@ def main(pkl_path, image_id):
     # transform the hand root joint to the wrist joint of body pose
     assert len(pred_left_hand_joint_3d_list) == len(pred_right_hand_joint_3d_list) == len(pred_joints_3d_list)
 
-    pred_left_hand = pred_left_hand_joint_3d_list[image_id]
-    pred_right_hand = pred_right_hand_joint_3d_list[image_id]
-    pred_body_pose = pred_joints_3d_list[image_id]
-    pred_right_hand += pred_body_pose[3] - pred_right_hand[0]
-    pred_left_hand += pred_body_pose[6] - pred_left_hand[0]
+    vis = open3d.visualization.Visualizer()
+    vis.create_window()
 
-    body_mesh = draw_skeleton_with_chain(pred_body_pose, mo2cap2_chain)
-    left_hand_mesh = draw_skeleton_with_chain(pred_left_hand, mano_skeleton, keypoint_radius=0.01,
-                                                      line_radius=0.0025)
-    right_hand_mesh = draw_skeleton_with_chain(pred_right_hand, mano_skeleton, keypoint_radius=0.01,
-                                                      line_radius=0.0025)
-    open3d.visualization.draw_geometries([body_mesh, left_hand_mesh, right_hand_mesh])
+
+    for pred_id in range(len(pred_joints_3d_list)):
+        pred_left_hand = pred_left_hand_joint_3d_list[pred_id]
+        pred_right_hand = pred_right_hand_joint_3d_list[pred_id]
+        pred_body_pose = pred_joints_3d_list[pred_id]
+        
+        pred_right_hand += pred_body_pose[3] - pred_right_hand[0]
+        pred_left_hand += pred_body_pose[6] - pred_left_hand[0]
+
+        body_mesh = draw_skeleton_with_chain(pred_body_pose, mo2cap2_chain)
+        left_hand_mesh = draw_skeleton_with_chain(pred_left_hand, mano_skeleton, keypoint_radius=0.01,
+                                                        line_radius=0.0025)
+        right_hand_mesh = draw_skeleton_with_chain(pred_right_hand, mano_skeleton, keypoint_radius=0.01,
+                                                        line_radius=0.0025)
+        vis.clear_geometries()
+        
+        vis.add_geometry(body_mesh, reset_bounding_box=pred_id==0) 
+        vis.add_geometry(left_hand_mesh, reset_bounding_box=pred_id==0)
+        vis.add_geometry(right_hand_mesh, reset_bounding_box=pred_id==0)
+
+        vis.poll_events()
+        vis.update_renderer()
+        
+        time.sleep(0.05)
+            
+        
 
 
 if __name__ == '__main__':

@@ -27,7 +27,7 @@ checkpoint_config = dict(interval=1)
 total_epochs = 10
 img_res = 256
 
-fisheye_camera_path = '/CT/EgoMocap/work/EgocentricFullBody/mmpose/utils/fisheye_camera/fisheye.calibration_01_12.json'
+fisheye_camera_path = 'calibrations/EgoWholeBody.json'
 
 log_config = dict(
     interval=50,
