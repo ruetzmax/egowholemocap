@@ -22,3 +22,5 @@ transforms3d
 yacs
 smplx
 torchgeometry
+xtcocotools
+munkres
