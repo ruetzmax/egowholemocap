@@ -74,9 +74,9 @@ human_models
 
 The following models are not available anymore. Please use this link: https://drive.google.com/drive/folders/13y9rxSLFKhbpq9JBrolxWn3ranl3sD-_?usp=sharing
 
-1. Download the pretrained human body pose estimation model (FisheyeViT + pixel-aligned 3D heatmap) from [NextCloud](https://nextcloud.mpi-klsb.mpg.de/index.php/s/zmaFFAEBR33LFQt) and put it under `./checkpoints/`.
-2. Download the pretrained hand detection model from [NextCloud](https://nextcloud.mpi-klsb.mpg.de/index.php/s/8zow6NEWKgPFnRF) and put it under `./checkpoints/`.
-3. Download the pretrained hand pose estimation model from [NextCloud](https://nextcloud.mpi-klsb.mpg.de/index.php/s/343YTMdfgAneHcC) and put it under `./checkpoints/`.
+1. Download the pretrained human body pose estimation model (FisheyeViT + pixel-aligned 3D heatmap) from [NextCloud](https://nextcloud.mpi-klsb.mpg.de/index.php/s/zmaFFAEBR33LFQt) and put it under `./checkpoints/fisheyevit.pth`.
+2. Download the pretrained hand detection model from [NextCloud](https://nextcloud.mpi-klsb.mpg.de/index.php/s/8zow6NEWKgPFnRF) and put it under `./checkpoints/hand_detection.pth`.
+3. Download the pretrained hand pose estimation model from [NextCloud](https://nextcloud.mpi-klsb.mpg.de/index.php/s/343YTMdfgAneHcC) and put it under `./checkpoints/hand_pose_estimation.pth`.
 4. Download the pretrained whole-body motion diffusion model from [NextCloud](https://nextcloud.mpi-klsb.mpg.de/index.php/s/ifgQeHBrfZMC5SN) and put it under `./checkpoints/`.
 
 ### 2. Prepare the data
@@ -100,6 +100,11 @@ python scripts/visualization_script/vis_single_frame_whole_body_result.py \
         --pred_path work_dirs/egowholebody_single_demo/outputs.pkl \
         --image_id 0
 ```
+
+> To resolve 'libdecor: Failed to initialize GTK', run
+> ```shell
+>export XDG_SESSION_TYPE=x11
+>```
 
 ### 4. Run the diffusion-based whole-body motion refinement method
 
