@@ -4,6 +4,7 @@ import pickle
 from copy import deepcopy
 import time
 
+import os
 import numpy as np
 import open3d
 import torch
@@ -41,7 +42,9 @@ def main(pkl_path, image_id):
 
     vis = open3d.visualization.Visualizer()
     vis.create_window()
-
+    
+    res_dir = os.path.join(os.path.dirname(pkl_path), 'res')
+    os.makedirs(res_dir, exist_ok=True)
 
     for pred_id in range(len(pred_joints_3d_list)):
         pred_left_hand = pred_left_hand_joint_3d_list[pred_id]
@@ -64,6 +67,7 @@ def main(pkl_path, image_id):
 
         vis.poll_events()
         vis.update_renderer()
+        vis.capture_screen_image(os.path.join(res_dir, f'vis_frame_{pred_id}.png'))
         
         time.sleep(0.05)
             

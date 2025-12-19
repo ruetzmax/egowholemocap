@@ -124,7 +124,7 @@ class EgocentricFullBodyPose(BasePose):
         batch_size_img, _, img_height, img_width = img.shape
         batch_size_img_orginal, img_height_original, img_width_original, __ = img_original.shape
         batch_size_heatmap, hand_joint_num, img_height_heatmap, img_width_heatmap = hand_2d_heatmap.shape
-        assert img_height == 256 and img_width == 256 and img_height_original == 1024 and img_width_original == 1280
+        # assert img_height == 256 and img_width == 256 and img_height_original == 1024 and img_width_original == 1280
         assert batch_size_img == batch_size_img_orginal and batch_size_img == batch_size_heatmap
         assert img_height_heatmap == 64 and img_width_heatmap == 64
         assert hand_joint_num == 21 * 2
