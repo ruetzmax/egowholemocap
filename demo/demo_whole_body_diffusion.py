@@ -52,13 +52,13 @@ def run_diffusion():
     data_length = len(full_body_motion_dataset)
     result = []
 
-    full_body_pose_diffusion_refiner = RefineEdgeDiffusionHandsUncertainty(seq_len=196).cuda()
+    full_body_pose_diffusion_refiner = RefineEdgeDiffusionHandsUncertainty(seq_len=196).cpu()
     full_body_pose_diffusion_refiner.eval()
     load_checkpoint(full_body_pose_diffusion_refiner, diffusion_model_path, map_location='cpu', strict=True)
     for data_id in range(data_length):
         data_i = full_body_motion_dataset[data_id]
 
-        data_i = {k: v.unsqueeze(0).cuda() if isinstance(v, torch.Tensor) else v for k, v in data_i.items()}
+        data_i = {k: v.unsqueeze(0).cpu() if isinstance(v, torch.Tensor) else v for k, v in data_i.items()}
 
         with torch.no_grad():
             diffusion_results = full_body_pose_diffusion_refiner(**data_i)
@@ -139,7 +139,6 @@ if __name__ == '__main__':
     # network_pred_seq_path = r'work_dirs/egowholebody_single_demo/outputs.pkl'
     mean_std_path = r'dataset_files/ego_mean_std.pkl'
     diffusion_model_path = r'checkpoints/diffusion_denoiser.pth'
-    diffusion_result_save_dir = r"work_dirs/egowholebody_diffusion_demo"
 
     import argparse
 
@@ -147,7 +146,8 @@ if __name__ == '__main__':
     parser.add_argument('--pred_path', type=str, required=True, help='prediction output pkl file path')
     args = parser.parse_args()
     network_pred_seq_path = args.pred_path
+    diffusion_result_save_dir = os.path.dirname(network_pred_seq_path)
     result_list = run_diffusion()
     os.makedirs(diffusion_result_save_dir, exist_ok=True)
-    with open(os.path.join(diffusion_result_save_dir, 'outputs.pkl'), 'wb') as f:
+    with open(os.path.join(diffusion_result_save_dir, 'outputs_refined.pkl'), 'wb') as f:
         pickle.dump(result_list, f)
