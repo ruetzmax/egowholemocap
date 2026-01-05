@@ -12,7 +12,7 @@ from mmpose.utils.visualization.draw import draw_skeleton_with_chain
 from mmpose.data.keypoints_mapping.mo2cap2 import mo2cap2_chain
 from mmpose.data.keypoints_mapping.mano import mano_skeleton
 
-def main(joint_pkl_path, image_id, object_pkl_path=None):
+def main(joint_pkl_path, image_id, object_pkl_path=None, camera_mode="face-down"):
     with open(joint_pkl_path, 'rb') as f:
         joint_data = pickle.load(f)
         
@@ -42,45 +42,98 @@ def main(joint_pkl_path, image_id, object_pkl_path=None):
                                                         line_radius=0.0025)
         
         # draw object boxes
-        if object_data and image_id < len(object_data):
-            frame_data = object_data[image_id]
+        object_boxes = []
+        if object_data: #and image_id < len(object_data):
+            frame_data = object_data[image_id].copy()
             
             object_centers = frame_data['pred_center_cam']
             object_dimensions = frame_data['pred_dimensions']
             object_rotations = frame_data['pred_pose']
             object_scores = frame_data['scores']
+            object_verts2d = frame_data['pred_verts2d']
+            object_verts3d = frame_data['pred_verts3d']
             
-            # transpose z and y axes and invert y axis to match Open3D coords
-            object_centers = object_centers.copy()
-            object_centers[:, [2, 1]] = object_centers[:, [1, 2]]
-            object_centers[:, 1] = -object_centers[:, 1]
+            if camera_mode == "face-down":
+                # transpose z and y axes and invert y axis to match Open3D coords
+                object_centers = object_centers.copy()
+                object_centers[:, [2, 1]] = object_centers[:, [1, 2]]
+                object_centers[:, 1] = -object_centers[:, 1]
 
-            # assume camera is facing down, so rotate by -90 degs along x
-            rotation_x_90 = np.array([
-                [1, 0, 0],
-                [0, 0, 1],
-                [0, -1, 0]
-            ])
-            object_centers = object_centers @ rotation_x_90.T
-            object_rotations = object_rotations.copy()
-            for idx in range(len(object_rotations)):
-                object_rotations[idx] = rotation_x_90 @ object_rotations[idx]
+                # assume camera is facing down, so rotate by -90 degs along x
+                rotation_x_90 = np.array([
+                    [1, 0, 0],
+                    [0, 0, 1],
+                    [0, -1, 0]
+                ])
+                object_centers = object_centers @ rotation_x_90.T
+                object_rotations = object_rotations.copy()
+                for idx in range(len(object_rotations)):
+                    object_rotations[idx] = rotation_x_90 @ object_rotations[idx]
+                    
+                # translate relative to head position
+                head_position = pred_body_pose[0]
+                object_centers += head_position
                 
-            # translate relative to head position
-            head_position = pred_body_pose[0]
-            object_centers += head_position
+                # scale positions on z axis
+                object_centers[:, 2] *= 0.5
+                
+            elif camera_mode == "360":
+                image_width = 2160
+                image_height = 1080
+                
+                object_verts2d = object_verts2d.copy()
+                num_objects = object_verts2d.shape[0]
+                object_verts2d = object_verts2d.reshape(num_objects, 3, 8)
+                object_verts2d = object_verts2d.transpose(0, 2, 1)
+                
+                # pixel coords -> image coords
+                object_verts2d[:, :, 0] /= image_width
+                object_verts2d[:, :, 1] /= image_height
+                object_verts2d = object_verts2d[:, :, :2]  
+                
+                # image coords -> spherical coords
+                object_verts2d[:, :, 0] = (object_verts2d[:, :, 0] - 0.5) * 2 * np.pi + np.pi/2
+                object_verts2d[:, :, 1] = (object_verts2d[:, :, 1] - 0.5) * np.pi
+
+                # spherical coords -> world coords
+                r = object_verts3d[:, :, 2] * 0.4 # use z value as radius
+                z = r * np.sin(object_verts2d[:, :, 1])
+                x = r * np.cos(object_verts2d[:, :, 1]) * np.sin(object_verts2d[:, :, 0]) * -1
+                y = r * np.cos(object_verts2d[:, :, 1]) * np.cos(object_verts2d[:, :, 0])
+                all_obj_verts = np.stack([x, y, z], axis=-1)
+            else:
+                raise ValueError(f"Invalid camera mode {camera_mode}")
             
-            # scale positions on z axis
-            object_centers[:, 2] *= 0.5
-            
-            object_boxes = []
             for object_idx in range(len(object_centers)):
-                if object_scores[object_idx] < 0.4:
-                    continue
-                obj = open3d.geometry.OrientedBoundingBox(object_centers[object_idx], object_rotations[object_idx], object_dimensions[object_idx])
-                obj = open3d.geometry.TriangleMesh.create_from_oriented_bounding_box(obj)
-                obj.paint_uniform_color([0.0, 0.0, 1.0])
-                object_boxes.append(obj)
+                    if object_scores[object_idx] < 0.4:
+                        continue
+                    
+                    if camera_mode == "face-down":
+                        obj = open3d.geometry.OrientedBoundingBox(object_centers[object_idx], object_rotations[object_idx], object_dimensions[object_idx])
+                        obj = open3d.geometry.TriangleMesh.create_from_oriented_bounding_box(obj)
+                    elif camera_mode == "360":
+                        object_verts = all_obj_verts[object_idx]
+                        obj = open3d.geometry.TriangleMesh()
+                        obj.vertices = open3d.utility.Vector3dVector(object_verts)
+                        # create cube triangles (2 triangles per face, counter-clockwise winding)
+                        obj.triangles = open3d.utility.Vector3iVector(np.array([
+                            # bottom face (z-)
+                            [0,1,2], [0,2,3],
+                            # top face (z+)
+                            [4,7,6], [4,6,5],
+                            # front face (y-)
+                            [0,4,5], [0,5,1],
+                            # back face (y+)
+                            [2,6,7], [2,7,3],
+                            # right face (x+)
+                            [1,5,6], [1,6,2],
+                            # left face (x-)
+                            [0,3,7], [0,7,4],
+                        ]))
+
+                        
+                    obj.paint_uniform_color([0.0, 0.0, 1.0])
+                    object_boxes.append(obj)            
             
         
         vis.clear_geometries()
@@ -105,6 +158,7 @@ if __name__ == '__main__':
     parser.add_argument('--pred_path', type=str, required=True, help='prediction output pkl file path')
     parser.add_argument('--image_id', type=int, required=True, help='the image id to visualize')
     parser.add_argument('--object_pred_path', type=str, default=None, help="ovmono3d predictions pkl file path")
+    parser.add_argument('--camera_mode', type=str, default="face-down")
     args = parser.parse_args()
 
-    main(args.pred_path, args.image_id, args.object_pred_path)
+    main(args.pred_path, args.image_id, args.object_pred_path, args.camera_mode)
