@@ -49,20 +49,33 @@ def main(joint_pkl_path, image_id, object_pkl_path=None):
             object_dimensions = frame_data['pred_dimensions']
             object_rotations = frame_data['pred_pose']
             object_scores = frame_data['scores']
-
             
-            # rotation_matrix = np.array([
-            #     [1, 0, 0],
-            #     [0, 0, -1],
-            #     [0, 1, 0]
-            # ])
-            
-            # object_centers = object_centers @ rotation_matrix.T
+            # transpose z and y axes and invert y axis to match Open3D coords
+            object_centers = object_centers.copy()
+            object_centers[:, [2, 1]] = object_centers[:, [1, 2]]
+            object_centers[:, 1] = -object_centers[:, 1]
 
+            # assume camera is facing down, so rotate by -90 degs along x
+            rotation_x_90 = np.array([
+                [1, 0, 0],
+                [0, 0, 1],
+                [0, -1, 0]
+            ])
+            object_centers = object_centers @ rotation_x_90.T
+            object_rotations = object_rotations.copy()
+            for idx in range(len(object_rotations)):
+                object_rotations[idx] = rotation_x_90 @ object_rotations[idx]
+                
+            # translate relative to head position
+            head_position = pred_body_pose[0]
+            object_centers += head_position
+            
+            # scale positions on z axis
+            object_centers[:, 2] *= 0.5
             
             object_boxes = []
             for object_idx in range(len(object_centers)):
-                if object_scores[object_idx] < 0.3:
+                if object_scores[object_idx] < 0.4:
                     continue
                 obj = open3d.geometry.OrientedBoundingBox(object_centers[object_idx], object_rotations[object_idx], object_dimensions[object_idx])
                 obj = open3d.geometry.TriangleMesh.create_from_oriented_bounding_box(obj)
