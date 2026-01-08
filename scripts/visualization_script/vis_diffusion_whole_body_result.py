@@ -144,6 +144,11 @@ def main(joint_pkl_path, image_id, object_pkl_path=None, camera_mode="face-down"
         for object_box in object_boxes:
             vis.add_geometry(object_box, reset_bounding_box=image_id==0)
 
+        # # zoom out on first frame
+        # if image_id == 0:
+        #     ctr = vis.get_view_control()
+        #     ctr.set_zoom(2)
+
         vis.poll_events()
         vis.update_renderer()
         vis.capture_screen_image(os.path.join(res_dir, f'vis_frame_{image_id}.png'))
